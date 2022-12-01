@@ -1,6 +1,6 @@
 open System.IO
 
-let lines = File.ReadAllLines("input1.txt")
+let lines = File.ReadAllLines("input.txt")
 
 let sumElf acc curr =
     match curr with
@@ -11,7 +11,7 @@ let sumElf acc curr =
         | _ -> Array.append acc[.. acc.Length - 2] [| acc[acc.Length - 1] + (x |> int) |]
 
 let elves = ([||], lines) ||> Array.fold sumElf
-let sorted = elves |> Array.sortBy (fun x -> -x - 1)
+let sorted = elves |> Array.sortBy (~-)
 
 printfn $"Question 1: {sorted[0]}"
 
