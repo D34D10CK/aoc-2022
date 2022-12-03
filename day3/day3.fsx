@@ -1,25 +1,37 @@
 open System.IO
 
-
 let itemPriority item =
-    if System.Char.IsUpper(item) then (-) (int item) 38
-    else (-) (int item) 96
+    if System.Char.IsUpper(item) then
+        (-) (int item) 38
+    else
+        (-) (int item) 96
 
+let splitRucksack (line: string) =
+    let firstCompartment = line[.. line.Length / 2 - 1]
+    let secondCompartment = line[line.Length / 2 ..]
+    [| firstCompartment; secondCompartment |]
 
-let commonItem (line:string) =
-    let firstCompartment = line[..line.Length / 2-1] |> Seq.toList |> set
-    let secondCompartment = line[line.Length /2..] |> Seq.toList |> set
+let commonItem (bags: string[]) =
+    let commonItems =
+        bags
+        |> Array.map (fun x -> x |> Seq.toList |> set)
+        |> Array.reduce Set.intersect
+        |> Set.toList
 
-    let intersetion = Set.intersect firstCompartment secondCompartment |> Set.toList
-    intersetion[0]
+    commonItems[0]
 
+let computeRucksackPriorities line =
+    line |> splitRucksack |> commonItem |> itemPriority
 
-let fn line=
-    line |> commonItem |> itemPriority
-
-
+let computeElfGroupsPriorities group = group |> commonItem |> itemPriority
 
 let lines = File.ReadAllLines("input.txt")
-let priorities = lines |> Array.map fn |> Array.sum
+let rucksackPriority = lines |> Array.map computeRucksackPriorities |> Array.sum
+printfn $"Question 1: {rucksackPriority}"
 
-printfn $"Question 1: {priorities}"
+let elfGroups =
+    [ for i in 0..3 .. lines.Length - 1 do
+          yield lines[i .. i + 2] ]
+
+let badgePriority = elfGroups |> List.map computeElfGroupsPriorities |> List.sum
+printfn $"Question 2: {badgePriority}"
