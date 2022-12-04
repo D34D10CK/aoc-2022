@@ -2,9 +2,9 @@ open System.IO
 
 let itemPriority item =
     if System.Char.IsUpper(item) then
-        (-) (int item) 38
+        (int item) - 38
     else
-        (-) (int item) 96
+        (int item) - 96
 
 let splitRucksack (line: string) =
     let firstCompartment = line[.. line.Length / 2 - 1]
