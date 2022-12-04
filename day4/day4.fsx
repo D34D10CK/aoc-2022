@@ -26,10 +26,6 @@ let parseLine (line: string) =
     let r2 = parseRange pair[1]
     r1, r2
 
-let findOverlapping line =
-    let r1, r2 = parseLine line
-    overlapping r1 r2
-
 let lines = File.ReadAllLines("input.txt")
 
 let numFullyContainedIntervals =
