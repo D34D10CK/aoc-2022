@@ -1,6 +1,6 @@
 open System.IO
 
-type outcome =
+type Outcome =
     | Win
     | Loss
     | Draw
@@ -11,7 +11,7 @@ let parseOutcome input =
     | 'Y' -> Draw
     | 'Z' -> Win
 
-type move =
+type Move =
     | Rock
     | Paper
     | Scissors
