@@ -3,11 +3,7 @@ open System.IO
 let allDistinct (str: char[]) = str.Length = (set str).Count
 
 let firstAllDistintWindowIndex str windowSize =
-    str
-    |> Seq.windowed windowSize
-    |> Seq.map allDistinct
-    |> Seq.toArray
-    |> Array.findIndex id
+    str |> Seq.windowed windowSize |> Seq.map allDistinct |> Seq.findIndex id
 
 let findFirstMarkerPosition str = firstAllDistintWindowIndex str 4 + 4
 
