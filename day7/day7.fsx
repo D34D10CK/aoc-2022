@@ -9,26 +9,29 @@ let (|ParseRegex|_|) regex str =
     else
         None
 
-let parseLine ((fs: Map<string list, int>), (currPath: string list)) (line: string) =
+let parseLine ((fs: Map<string, int>), currPath) line =
     match line with
     | ParseRegex @"^\$ cd (\w+)$" [ dir ] ->
-        let newPath = dir :: currPath
+        let newPath = Path.Join(currPath, dir)
         fs.Add(newPath, 0), newPath
-    | "$ cd .." -> fs, currPath.Tail
+    | "$ cd .." -> fs, Path.GetDirectoryName(currPath)
     | ParseRegex @"^(\d+).*" [ size ] -> fs.Change(currPath, (fun x -> Some(int size + x.Value))), currPath
     | _ -> fs, currPath
 
 let lines = File.ReadAllLines("input.txt") |> Array.toList
 
 let fs =
-    ((Map [ ([ "/" ], 0) ], [ "/" ]), lines.Tail) ||> List.fold parseLine |> fst
-
-let fsList =
-    fs |> Map.toList |> List.map (fun x -> fst x |> String.concat "/", snd x)
+    ((Map [ (string Path.DirectorySeparatorChar, 0) ], string Path.DirectorySeparatorChar), lines.Tail)
+    ||> List.fold parseLine
+    |> fst
+    |> Map.toList
 
 let sizes =
-    fsList
-    |> List.map (fun (x1, _) -> fsList |> List.filter (fun (x2, _) -> x2.EndsWith(x1)) |> List.sumBy snd)
+    fs
+    |> List.map (fun (path, _) ->
+        fs
+        |> List.filter (fun (otherPath, _) -> otherPath.StartsWith(path))
+        |> List.sumBy snd)
 
 let part1 = sizes |> List.filter (fun x -> x <= 100000) |> List.sum
 printfn $"Question 1: {part1}"
