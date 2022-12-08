@@ -20,8 +20,10 @@ let parseLine ((fs: Map<string, int>), currPath) line =
 
 let lines = File.ReadAllLines("input.txt") |> Array.toList
 
+let rootFolder = string Path.DirectorySeparatorChar
+
 let fs =
-    ((Map [ (string Path.DirectorySeparatorChar, 0) ], string Path.DirectorySeparatorChar), lines.Tail)
+    ((Map [ (rootFolder, 0) ], rootFolder), lines.Tail)
     ||> List.fold parseLine
     |> fst
     |> Map.toList
