@@ -1,5 +1,4 @@
 open System.IO
-open System.Text.RegularExpressions
 
 type Rope =
     { Head: float * float
@@ -22,29 +21,57 @@ let move rope moveTo =
     else
         { Head = moveTo; Tail = rope.Head }
 
-let parseLine trail rope line =
-    let m = Regex(@"(\w) (\d+)").Match(line)
-    let direction = m.Groups[1].Value[0]
-    let amount = int m.Groups[2].Value
-    let x, y = rope.Head
+let rec fn ropes moveTo =
+    printfn $"{moveTo}"
+    match ropes with
+    | x :: [] -> [ move x moveTo ]
+    | x :: xs ->
+        let head = move x moveTo
+        let rest = fn xs head.Tail
+        head :: rest
+    | [] -> ropes
+
+let parseLine trail ropes (line: string) =
+    let direction = line[0]
+    let amount = int line[2..]
 
     let moves =
         match direction with
-        | Up -> (rope, [ 1..amount ]) ||> List.scan (fun r i -> move r (x, y + float i))
-        | Down -> (rope, [ 1..amount ]) ||> List.scan (fun r i -> move r (x, y - float i))
-        | Left -> (rope, [ 1..amount ]) ||> List.scan (fun r i -> move r (x - float i, y))
-        | Right -> (rope, [ 1..amount ]) ||> List.scan (fun r i -> move r (x + float i, y))
+        | Up ->
+            (ropes, [ 1..amount ])
+            ||> List.scan (fun rs _ -> fn rs (fst rs.Head.Head, snd rs.Head.Head + 1.0))
+        | Down ->
+            (ropes, [ 1..amount ])
+            ||> List.scan (fun rs _ -> fn rs (fst rs.Head.Head, snd rs.Head.Head - 1.0))
+        | Left ->
+            (ropes, [ 1..amount ])
+            ||> List.scan (fun rs _ -> fn rs (fst rs.Head.Head - 1.0, snd rs.Head.Head))
+        | Right ->
+            (ropes, [ 1..amount ])
+            ||> List.scan (fun rs _ -> fn rs (fst rs.Head.Head + 1.0, snd rs.Head.Head))
+    printfn $"{moves}"
+    moves |> List.map (fun rs -> (List.last rs).Tail) |> List.append trail, List.last moves
 
-    moves |> List.map (fun r -> r.Tail) |> List.append trail, List.last moves
-
-let rec parseLines trail rope lines =
+let rec parseLines trail ropes lines =
     match lines with
     | line :: rest ->
-        let newTrail, newRope = parseLine trail rope line
-        newTrail @ parseLines newTrail newRope rest
+        let newTrail, newRopes = parseLine trail ropes line
+        newTrail @ parseLines newTrail newRopes rest
     | [] -> trail
 
 let lines = File.ReadAllLines("input.txt") |> Array.toList
-let visitedIdx = parseLines [] { Head = (0.0, 0.0); Tail = (0.0, 0.0) } lines |> set
+
+let visitedIdx =
+    parseLines [] [ { Head = (0.0, 0.0); Tail = (0.0, 0.0) } ] lines |> set
 
 printfn $"Question 1: {visitedIdx.Count}"
+
+let visitedIdx2 =
+    parseLines
+        []
+        [ for _ in 1..10 do
+              { Head = (0.0, 0.0); Tail = (0.0, 0.0) } ]
+        lines
+    |> set
+
+printfn $"Question 2: {visitedIdx2.Count}"
