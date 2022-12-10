@@ -1,6 +1,6 @@
 open System.IO
 
-type Rope =
+type RopeSegment =
     { Head: float * float
       Tail: float * float }
 
@@ -11,48 +11,10 @@ let (|Up|Down|Left|Right|) input =
     | 'L' -> Left
     | 'R' -> Right
 
-let printState (ropes: Rope list) =
-    let grid =
-        [ for _ in 1..35 do
-              [ for _ in 1..35 do
-                    '.' ] ]
-        |> array2D
-
-    grid[15, 15] <- 'S'
-
-    grid[int (fst ropes[0].Head) + 15, int (snd ropes[0].Head) + 15] <- 'H'
-
-    for i = 0 to ropes.Length - 2 do
-        grid[int (fst ropes[i].Tail) + 15, int (snd ropes[i].Tail) + 15] <- $"{i + 1}"[0]
-
-    grid[int (fst ropes[ropes.Length - 1].Tail) + 15, int (snd ropes[ropes.Length - 1].Tail) + 15] <- 'T'
-
-
-    for i = 0 to Array2D.length1 grid - 1 do
-        for j = 0 to Array2D.length2 grid - 1 do
-            printf $"{grid[i, j]}"
-
-        printfn ""
-
 let distance (x1: float, y1: float) (x2: float, y2: float) = sqrt ((x1 - x2) ** 2 + (y1 - y2) ** 2)
 
-let move rope moveTo =
+let moveSegment rope moveTo =
     let dist = distance rope.Tail moveTo
-    // printf $"head: {rope.Head} tail: {rope.Tail} moveTo: {moveTo} dist: {dist}"
-
-    // let res =
-    //     if dist < 2 && dist > 1 then
-    //         { Head = moveTo; Tail = rope.Tail }
-    //     elif rope.Head = moveTo then
-    //         rope
-    //     elif dist = 2.0 then
-    //         let x1, y1 = moveTo
-    //         let x2, y2 = rope.Tail
-
-    //         { Head = moveTo
-    //           Tail = ((x1 - x2) / dist + x2, (y1 - y2) / dist + y2) }
-    //     else
-    //         { Head = moveTo; Tail = rope.Head }
     let x1, y1 = moveTo
     let x2, y2 = rope.Tail
 
@@ -65,68 +27,43 @@ let move rope moveTo =
         else
             rope.Tail
 
+    { Head = moveTo; Tail = tail }
 
-    let res = { Head = moveTo; Tail = tail }
-    // printfn $"-> head: {res.Head} tail: {res.Tail}"
-    res
-
-
-let rec fn ropes moveTo =
-    // printfn $"{moveTo}"
-    match ropes with
-    // | x :: [] -> [ move x moveTo ]
+let rec moveRope rope moveTo =
+    match rope with
     | x :: xs ->
-        let head = move x moveTo
-        let rest = fn xs head.Tail
+        let head = moveSegment x moveTo
+        let rest = moveRope xs head.Tail
         head :: rest
-    | [] -> ropes
+    | [] -> rope
 
-let parseLine trail ropes (line: string) =
-    // trail |> List.iter (fun x -> printfn $"{x}")
-    // ropes |> List.iter (fun x -> printfn $"{x}")
-    // printfn "------------"
-
-    // printState ropes
-    // printfn "----------------"
+let parseLine trail rope (line: string) =
     let direction = line[0]
     let amount = int line[2..]
-    // printfn $"{line}"
 
     let moves =
         match direction with
         | Up ->
-            (ropes, [ 1..amount ])
-            ||> List.scan (fun rs _ ->
-                // printState rs
-                fn rs (fst rs.Head.Head, snd rs.Head.Head + 1.0))
+            (rope, [ 1..amount ])
+            ||> List.scan (fun r _ -> moveRope r (fst r.Head.Head, snd r.Head.Head + 1.0))
         | Down ->
-            (ropes, [ 1..amount ])
-            ||> List.scan (fun rs _ ->
-                // printState rs
-                fn rs (fst rs.Head.Head, snd rs.Head.Head - 1.0))
+            (rope, [ 1..amount ])
+            ||> List.scan (fun r _ -> moveRope r (fst r.Head.Head, snd r.Head.Head - 1.0))
         | Left ->
-            (ropes, [ 1..amount ])
-            ||> List.scan (fun rs _ ->
-                // printState rs
-                fn rs (fst rs.Head.Head - 1.0, snd rs.Head.Head))
+            (rope, [ 1..amount ])
+            ||> List.scan (fun r _ -> moveRope r (fst r.Head.Head - 1.0, snd r.Head.Head))
         | Right ->
-            (ropes, [ 1..amount ])
-            ||> List.scan (fun rs _ ->
-                // printState rs
-                fn rs (fst rs.Head.Head + 1.0, snd rs.Head.Head))
-    // moves |> List.iter (fun x -> printfn $"{x}")
+            (rope, [ 1..amount ])
+            ||> List.scan (fun r _ -> moveRope r (fst r.Head.Head + 1.0, snd r.Head.Head))
 
-    let res =
-        moves |> List.map (fun rs -> (List.last rs).Tail) |> List.append trail, List.last moves
-    // printState (snd res)
-    // printfn "----------------"
-    res
+    moves |> List.map (fun r -> (List.last r).Tail) |> List.append trail, List.last moves
 
-let rec parseLines trail ropes lines =
+
+let rec parseLines trail rope lines =
     match lines with
     | line :: rest ->
-        let newTrail, newRopes = parseLine trail ropes line
-        newTrail @ parseLines newTrail newRopes rest
+        let newTrail, newRope = parseLine trail rope line
+        newTrail @ parseLines newTrail newRope rest
     | [] -> trail
 
 let lines = File.ReadAllLines("input.txt") |> Array.toList
@@ -143,20 +80,5 @@ let visitedIdx2 =
               { Head = (0.0, 0.0); Tail = (0.0, 0.0) } ]
         lines
     |> set
-// visitedIdx2 |> List.iter (fun x -> printfn $"{x}")
+
 printfn $"Question 2: {visitedIdx2.Count}"
-
-// let grid =
-//     [ for _ in 1..35 do
-//           [ for _ in 1..35 do
-//                 '.' ] ]
-//     |> array2D
-
-// for i = 0 to visitedIdx2.Length - 1 do
-//     grid[int (fst visitedIdx2[i]) + 15, int (snd visitedIdx2[i]) + 15] <- '#'
-
-// for i = 0 to Array2D.length1 grid - 1 do
-//     for j = 0 to Array2D.length2 grid - 1 do
-//         printf $"{grid[i, j]}"
-
-//     printfn ""
