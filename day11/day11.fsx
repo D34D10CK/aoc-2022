@@ -101,8 +101,7 @@ let playGame monkeys nRounds part2 =
 
 let text = File.ReadAllText("input.txt")
 
-let lines =
-    text.Split(String.concat "" [ Environment.NewLine; Environment.NewLine ])
+let lines = text.Split(Environment.NewLine + Environment.NewLine)
 
 let monkeys = lines |> Array.map parseMonkey
 

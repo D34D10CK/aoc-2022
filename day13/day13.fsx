@@ -26,7 +26,7 @@ let rec compare (left: string list) (right: string list) =
 let text = File.ReadAllText("input.txt")
 
 let inputs =
-    text.Split(String.Concat([ Environment.NewLine; Environment.NewLine ]))
+    text.Split(Environment.NewLine + Environment.NewLine)
     |> Array.map (fun str ->
         let splits = str.Split(Environment.NewLine)
         (splits[0] |> tokenize, splits[1] |> tokenize))
