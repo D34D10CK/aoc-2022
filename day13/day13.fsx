@@ -33,8 +33,7 @@ let inputs =
 
 let part1 =
     inputs
-    |> Array.map (fun x -> x ||> compare)
-    |> Array.mapi (fun i x -> if x = -1 then i + 1 else 0)
+    |> Array.mapi (fun i (left, right) -> if compare left right = -1 then i + 1 else 0)
     |> Array.sum
 
 printfn $"Question 1: {part1}"
@@ -42,7 +41,6 @@ printfn $"Question 1: {part1}"
 let lines =
     File.ReadAllLines("input.txt")
     |> Array.filter (fun s -> not (String.IsNullOrWhiteSpace s))
-
 
 let sorted =
     Array.concat [ lines; [| "[[2]]"; "[[6]]" |] ]
