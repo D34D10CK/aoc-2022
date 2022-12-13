@@ -3,17 +3,17 @@ open System.Text.RegularExpressions
 open System
 
 type Monkey =
-    { Id: int
-      Items: int list
-      Operation: int -> int
-      Test: int
-      IfTrue: int
-      IfFalse: int
+    { Id: uint64
+      Items: uint64 list
+      Operation: uint64 -> uint64
+      Test: uint64
+      IfTrue: uint64
+      IfFalse: uint64
       NumInspected: uint64 }
 
-let parseItems (line: string) = line.Split ", " |> Array.map int
+let parseItems (line: string) = line.Split ", " |> Array.map uint64
 
-let parseOperation (line: string) (old: int) =
+let parseOperation (line: string) (old: uint64) =
     let ops = line.Replace("old", string old).Split(" ")
 
     let op =
@@ -21,7 +21,7 @@ let parseOperation (line: string) (old: int) =
         | "*" -> (*)
         | "+" -> (+)
 
-    op (int ops[0]) (int ops[2])
+    op (uint64 ops[0]) (uint64 ops[2])
 
 let parseMonkey text =
     let regex =
@@ -33,19 +33,19 @@ let parseMonkey text =
         \W*If false: throw to monkey (\d+)"
 
     let m = Regex(regex, RegexOptions.Multiline).Match(text)
-    let items = parseItems m.Groups[2].Value |> Array.toList
+    let items = parseItems m.Groups[2].Value |> Array.toList |> List.map uint64
     let g = m.Groups
 
-    { Id = int g[1].Value
+    { Id = uint64 g[1].Value
       Items = items
       Operation = parseOperation g[3].Value
-      Test = int g[4].Value
-      IfTrue = int g[5].Value
-      IfFalse = int g[6].Value
+      Test = uint64 g[4].Value |> uint64
+      IfTrue = uint64 g[5].Value
+      IfFalse = uint64 g[6].Value
       NumInspected = uint64 0 }
 
 
-let evalMonkey (monkeys: Monkey[]) (monkey: Monkey) =
+let evalMonkey (monkeys: Monkey[]) monkey part2 =
     let newMonkeys =
         monkeys
         |> Array.mapi (fun i m ->
@@ -62,9 +62,13 @@ let evalMonkey (monkeys: Monkey[]) (monkey: Monkey) =
 
     let throwTo =
         monkey.Items
-        |> List.map (fun item -> monkey.Operation item / 3)
         |> List.map (fun item ->
-            if item % monkey.Test = 0 then
+            if part2 then
+                monkey.Operation item % ((1UL, monkeys) ||> Array.fold (fun acc m -> m.Test * acc))
+            else
+                monkey.Operation item / 3UL)
+        |> List.map (fun item ->
+            if item % monkey.Test = 0UL then
                 monkey.IfTrue, item
             else
                 monkey.IfFalse, item)
@@ -74,9 +78,9 @@ let evalMonkey (monkeys: Monkey[]) (monkey: Monkey) =
 
     newMonkeys
     |> Array.mapi (fun i m ->
-        if throwTo.ContainsKey i then
+        if throwTo.ContainsKey(uint64 i) then
             { Id = m.Id
-              Items = m.Items @ throwTo[i]
+              Items = m.Items @ throwTo[uint64 i]
               Operation = m.Operation
               Test = m.Test
               IfTrue = m.IfTrue
@@ -86,9 +90,14 @@ let evalMonkey (monkeys: Monkey[]) (monkey: Monkey) =
             m)
 
 
-let playRound (monkeys: Monkey[]) =
+let playRound (monkeys: Monkey[]) part2 =
     (monkeys, [ 0 .. monkeys.Length - 1 ])
-    ||> List.fold (fun mnks i -> evalMonkey mnks mnks[i])
+    ||> List.fold (fun mnks i -> evalMonkey mnks mnks[i] part2)
+
+let playGame monkeys nRounds part2 =
+    let moves = (monkeys, [ 1..nRounds ]) ||> List.fold (fun m _ -> playRound m part2)
+    let numInspected = moves |> Array.map (fun m -> m.NumInspected)
+    numInspected |> Array.sort |> Array.rev |> Array.take 2 |> Array.reduce (*)
 
 let text = File.ReadAllText("input.txt")
 
@@ -97,10 +106,8 @@ let lines =
 
 let monkeys = lines |> Array.map parseMonkey
 
-let moves = (monkeys, [ 1..20 ]) ||> List.fold (fun m _ -> playRound m)
-let numInspected = moves |> Array.map (fun m -> m.NumInspected)
-
-let part1 =
-    numInspected |> Array.sort |> Array.rev |> Array.take 2 |> Array.reduce (*)
-
+let part1 = playGame monkeys 20 false
 printfn $"Question 1: {part1}"
+
+let part2 = playGame monkeys 10000 true
+printfn $"Question 2: {part2}"
