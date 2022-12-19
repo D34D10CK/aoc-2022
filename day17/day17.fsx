@@ -1,4 +1,7 @@
+#r "nuget: FSharpx.Collections"
+
 open System.IO
+open FSharpx.Collections
 
 let pieceList =
     let square = set [ (2, 0); (2, 1); (3, 0); (3, 1) ]
@@ -6,10 +9,13 @@ let pieceList =
     let l = set [ (2, 0); (3, 0); (4, 0); (4, 1); (4, 2) ]
     let cross = set [ (3, 0); (2, 1); (3, 1); (4, 1); (3, 2) ]
     let horizontal = set [ (2, 0); (3, 0); (4, 0); (5, 0) ]
-    Seq.initInfinite (fun _ -> [ horizontal; cross; l; i; square ]) |> Seq.concat
+
+    LazyList.ofList [ horizontal; cross; l; i; square ]
+    |> LazyList.repeat
+    |> LazyList.concat
 
 let parseInput text =
-    Seq.initInfinite (fun _ -> Seq.toList text) |> Seq.concat
+    LazyList.ofSeq text |> LazyList.repeat |> LazyList.concat
 
 let moveLeft (grid: Set<int * int>) piece =
     let canGoLeft =
@@ -30,71 +36,65 @@ let moveRight (grid: Set<int * int>) piece =
         piece
 
 let moveDirection grid dir piece =
-    // printfn $"{dir}"
-
     match dir with
     | '>' -> moveLeft grid piece
     | '<' -> moveRight grid piece
 
 let initializePiece grid piece =
     let height = (0, grid) ||> Set.fold (fun acc (_, y) -> max acc y)
-    let a = piece |> Set.map (fun (x, y) -> (x, y + height + 4))
-    // printfn "initialize"
+    piece |> Set.map (fun (x, y) -> (x, y + height + 4))
 
-    // for i in a do
-    //     printfn $"{i}"
+let hasRepeated grid =
+    let height = (0, grid) ||> Set.fold (fun acc (_, y) -> max acc y)
 
-    a
+    if height % 2 = 0 && height > 0 then
+        grid
+        |> Set.forall (fun (x, y) ->
+            if y <= height / 2 && y > 0 then
+                grid.Contains(x, y + height / 2)
+            elif y > height / 2 then
+                grid.Contains(x, y - height / 2)
+            else
+                true)
+    // let bottom = grid |> Set.filter (fun (_, y) -> y <= height / 2 && y > 0)
+    // let top = grid |> Set.filter (fun (_, y) -> y > height / 2)
+    // top |> Set.map (fun (x, y) -> (x, y - height / 2)) = bottom
+    else
+        false
 
-let rec playGame (grid: Set<int * int>) (pieces: seq<Set<int * int>>) (moves: char seq) iterations =
-    printfn $"{iterations}"
-    if iterations = 0 then
+let rec playGame (grid: Set<int * int>) (pieces: LazyList<Set<int * int>>) (moves: LazyList<char>) iterations =
+    if iterations = 0 || hasRepeated grid then
         grid
     else
-        let pushedPiece = moveDirection grid (Seq.head moves) (Seq.head pieces)
+        let pushedPiece = moveDirection grid moves.Head pieces.Head
 
         let canMoveDown =
             pushedPiece |> Set.forall (fun (x, y) -> not <| grid.Contains((x, y - 1)))
 
         if canMoveDown then
             let movedPiece = pushedPiece |> Set.map (fun (x, y) -> (x, y - 1))
+            let newPieces = LazyList.cons movedPiece pieces.Tail
 
-            let newPieces =
-                seq {
-                    yield movedPiece
-                    yield! Seq.tail pieces
-                }
-
-            playGame grid newPieces (Seq.tail moves) iterations
+            playGame grid newPieces moves.Tail iterations
         else
-            // printfn $"{grid.Count}"
             let newGrid = grid + pushedPiece
-            let newPiece = pieces |> Seq.tail |> Seq.head |> initializePiece newGrid
-
-            let newPieces =
-                seq {
-                    yield newPiece
-                    yield! pieces |> Seq.tail |> Seq.tail
-                }
-
-
-            // printfn "new piece"
-            playGame newGrid newPieces (Seq.tail moves) (iterations - 1)
+            let newPiece = pieces.Tail.Head |> initializePiece newGrid
+            let newPieces = LazyList.cons newPiece pieces.Tail.Tail
+            playGame newGrid newPieces moves.Tail (iterations - 1)
 
 let text = File.ReadAllText("input.txt").Trim()
 let moveList = parseInput text
 let grid = set [ (0, 0); (1, 0); (2, 0); (3, 0); (4, 0); (5, 0); (6, 0) ]
-
-let pieces =
-    seq {
-        yield pieceList |> Seq.head |> initializePiece grid
-        yield! Seq.tail pieceList
-    }
+let pieces = LazyList.cons (pieceList.Head |> initializePiece grid) pieceList.Tail
 
 let result = playGame grid pieces moveList 2022
-
-for i in result do
-    printfn $"{i}"
-
 let height = (0, result) ||> Set.fold (fun acc (_, y) -> max acc y)
-printfn $"{height}"
+printfn $"Question 1: {height}"
+
+
+let result2 = playGame grid pieces moveList 100000000
+let height2 = (0, result2) ||> Set.fold (fun acc (_, y) -> max acc y)
+printfn $"Question 2: {height2}"
+
+// let a = hasRepeated (set [ (0, 0); (1, 0); (0, 1); (1, 1); (0, 2); (1, 3) ])
+// printfn $"{a}"
